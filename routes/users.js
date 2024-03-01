@@ -1,25 +1,23 @@
-// importing express from express dependency installed in package.json
+// Importing the Express module from the installed express package
 import express from "express";
-// importing functions from controller
+// Importing functions from the users controller
 import controller from "../controller/users.js";
-// importing create token from middleware
-import { createToken } from "../middleware/AuthenticateUser.js";
 
-// grouping together functions with similar routes
-const router = express.Router()
+
+// Creating an instance of the Express Router
+const router = express.Router();
+
+// Grouping together routes with similar paths
 router
     .route('/')
-        .get(controller.getManyUsers)
-        .post(controller.addOneUser)
+        .get(controller.getManyUsers) // GET request to fetch many users
+        .post(controller.addOneUser); // POST request to add a new user
 
 router
     .route('/:userID')
-        .get(controller.getOneUser)
-        .patch(controller.editOneUser)
-        .delete(controller.deleteOneUser);
-router  
-    .route('/login',createToken)
-    .post(controller.logInUser)
+        .get(controller.getOneUser) // GET request to fetch a single user by ID
+        .patch(controller.editOneUser) // PATCH request to edit a user by ID
+        .delete(controller.deleteOneUser); // DELETE request to delete a user by ID
 
-    // exporting globally
-export default router
+// Exporting the router to be used globally
+export default router;

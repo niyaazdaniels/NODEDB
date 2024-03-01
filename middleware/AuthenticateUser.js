@@ -1,5 +1,4 @@
-// importing mysql dependencies from package.json
-
+// importing mysql dependencies from package.json   
 import {config} from 'dotenv'
 config()
 // importing jwt dependency from package.json
@@ -11,38 +10,53 @@ import { verifyUser } from '../models/users.js';
 
 
 // middleware for login only, checks if a token is present or valid 
-const verifyToken = (req, res, next) => { 
-    let { cookie } = req.headers;
-    let tokenInHeader = cookie && cookie.split('=')[1];
-    if (!tokenInHeader) {
-        return res.sendStatus(401); // If No Token found in website headers
-    }
-    jwt.verify(tokenInHeader, process.env.SECRET_KEY, (err, user) => { 
-        if (err) {
-            return res.status(401).send({ msg: "Invalid or expired token" });
+const verifyToken = async (req,res,next)=>{
+    const {emailAdd,userPass} = req.body
+    const hashedPassword = await verifyUser(emailAdd)
+    bcrypt.compare(userPass,hashedPassword,(err,result)=>{
+        if(err) throw err
+        if(result === true){
+            console.log(emailAdd)
+            const token = jwt.sign({emailAdd:emailAdd},process.env.SECRET_KEY,{expiresIn:'1h'})
+            res.send({
+                token:token,
+                msg:'You have login succesfully'
+            })
+            next()
+        }else{
+            res.json({msg:'Password or Email address doesnt match'})
         }
-        req.user = user; 
-        next();
-    });
-};
+    })
+}
 
 //login and generates a new token for the user upon log in
 const createToken = async (req, res, next) => {
-        const {emailAdd, userPass} = req.body 
-        const hashedUserPass = await verifyUser(emailAdd) 
-        bcrypt.compare(userPass,hashedUserPass,(err,result) =>{    
-            if (err) throw err 
-            if(result === true){
-                const token = jwt.sign({emailAdd:emailAdd}, process.env.SECRET_KEY,{expiresIn:'1hr'})
-                res.cookie('jwt', token, {httpOnly:false})  
-                res.send({
-                    token:token,
-                    msg: "You have logged in successfully!"})
-                next()
-            }else {
-                res.send({msg: "The username or password does not match"})
-            }
-        })
+    try {
+        const { emailAdd, userPass } = req.body;
+        const hashedUserPass = await verifyUser(emailAdd);
+
+        if (!hashedUserPass) {
+            console.log("User not found");
+            return res.status(401).send({ msg: "User not found" });
+        }
+
+        const result = await bcrypt.compare(userPass, hashedUserPass);
+
+        if (result === true) {
+            console.log("Password matched. Creating token...");
+            const token = jwt.sign({ emailAdd: emailAdd }, process.env.SECRET_KEY, { expiresIn: '1h' });
+            res.cookie('jwt', token, { httpOnly: false });
+            console.log("Token created successfully");
+            // Do not send a response here
+            next(); // Proceed to the next middleware
+        } else {
+            console.log("Password does not match");
+            return res.status(401).send({ msg: "The username or password does not match" });
+        }
+    } catch (error) {
+        console.error("Error logging in:", error);
+        return res.status(500).send('Error logging in: ' + error);
     }
+};
     // exporting functions and making it global
     export {verifyToken, createToken}
